@@ -16,6 +16,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl jq softwar
 RUN curl https://api.github.com/repos/wavesplatform/Waves/releases | jq '[.[] | {tag: .tag_name, name: .name, assets: [.assets[].browser_download_url]} | select(.name | startswith("Testnet")), select(.name == .tag)] | .[0] | [.assets] | flatten | .[] | select(test("systemd"; "ix"))' | xargs wget && \
 	dpkg -i *.deb
 
-RUN sed -i "s+\"walletDir\": \"/tmp/scorex\",+\"walletDir\": \"/waves/wallet\",+g;s+\"dataDir\": \"/tmp/scorex\",+\"dataDir\": \"/waves/data\",+g;s+\"rpcEnabled\": false,+\"rpcEnabled\": true,+g" /etc/waves-testnet.json
+RUN sed -i "s+\"walletDir\": \"/tmp/scorex\",+\"walletDir\": \"/waves/wallet\",+g;s+\"dataDir\": \"/tmp/scorex\",+\"dataDir\": \"/waves/data\",+g;s+\"rpcEnabled\": false,+\"rpcEnabled\": true,+g;s+\"rpcAddress\": \"127.0.0.1\",+\"rpcAddress\": \"0.0.0.0\",+g" /etc/waves-testnet.json
 
 ENTRYPOINT waves-testnet /usr/share/waves/settings.json
