@@ -1,21 +1,29 @@
-FROM ubuntu:16.04
+FROM anapsix/alpine-java:8_server-jre
 
 MAINTAINER Alexey Kiselev <alexey.kiselev@gmail.com>
 
 EXPOSE 6863 6869
 
-RUN mkdir /waves /waves/data /waves/wallet
+RUN mkdir /waves /conf /data
 
-VOLUME ["/waves"]
+VOLUME ["/data"]
 
-RUN apt-get update && apt-get install -y --no-install-recommends curl jq software-properties-common && rm -rf /var/lib/apt/lists/* && \
-	add-apt-repository -y ppa:webupd8team/java && \
-	echo oracle-java8-installer shared/accepted-oracle-license-v1-1 select true | /usr/bin/debconf-set-selections && \
-	apt-get update && apt-get install -y oracle-java8-set-default && rm -rf /var/lib/apt/lists/*
+VOLUME ["/conf"]
 
-RUN curl https://api.github.com/repos/wavesplatform/Waves/releases | jq '[.[] | {tag: .tag_name, name: .name, assets: [.assets[].browser_download_url]} | select(.name | startswith("Testnet")), select(.name == .tag)] | .[0] | [.assets] | flatten | .[] | select(test("systemd"; "ix"))' | xargs wget && \
-	dpkg -i *.deb
+WORKDIR /waves
 
-RUN sed -i "s+\"walletDir\": \"/tmp/scorex\",+\"walletDir\": \"/waves/wallet\",+g;s+\"dataDir\": \"/tmp/scorex\",+\"dataDir\": \"/waves/data\",+g;s+\"rpcEnabled\": false,+\"rpcEnabled\": true,+g;s+\"rpcAddress\": \"127.0.0.1\",+\"rpcAddress\": \"0.0.0.0\",+g" /etc/waves-testnet.json
+ADD docker-entrypoint.sh /waves/docker-entrypoint.sh
 
-ENTRYPOINT waves-testnet /usr/share/waves/settings.json
+RUN chmod -v +x docker-entrypoint.sh
+
+RUN apk add --no-cache curl jq openssl
+
+RUN ver=$(curl https://api.github.com/repos/wavesplatform/Waves/releases | jq --arg version "$version" '[.[] | {tag: .tag_name, name: .name, assets: [.assets[].browser_download_url]} | select(.name | startswith("Testnet")) | select(.name | endswith($version)), select(.name == .tag)] | .[0] | .tag') && \
+	ver="${ver%\"}" && ver="${ver#\"}" && \
+	wget -P /waves -O waves.conf https://raw.githubusercontent.com/wavesplatform/Waves/$ver/waves-testnet.conf
+
+RUN sed -i "s|directory = .*|directory = \"/data\"|g" /waves/waves.conf
+
+RUN curl https://api.github.com/repos/wavesplatform/Waves/releases | jq --arg version "$version" '[.[] | {tag: .tag_name, name: .name, assets: [.assets[].browser_download_url]} | select(.name | startswith("Testnet")) | select(.name | endswith($version)), select(.name == .tag)] | .[0] | [.assets] | flatten | .[] | select(. | endswith(".jar"))' | xargs wget -P /waves -O waves.jar
+
+ENTRYPOINT ["/waves/docker-entrypoint.sh"]
