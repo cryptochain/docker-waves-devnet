@@ -1,6 +1,6 @@
 FROM anapsix/alpine-java:8_server-jre
 
-MAINTAINER Alexey Kiselev <alexey.kiselev@gmail.com>
+MAINTAINER Dmitry Ananichev <a@qozz.ru>
 
 EXPOSE 6863 6869
 
